@@ -1,0 +1,247 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Button } from "@/components/ui/button";
+import { Loader2, Volume2, VolumeX } from 'lucide-react';
+
+const REEL_SPIN_DURATION = 2000;
+const REEL_DELAY = 300;
+
+export default function SlotMachine({ 
+  symbols = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣', '⭐', '🎰'],
+  multipliers = { '7️⃣': 50, '💎': 30, '⭐': 20, '🍇': 10, '🍊': 5, '🍋': 3, '🍒': 2 },
+  betAmount,
+  onSpin,
+  onResult,
+  disabled = false,
+  rtp = 96
+}) {
+  const [reels, setReels] = useState([
+    [symbols[0], symbols[1], symbols[2]],
+    [symbols[2], symbols[3], symbols[4]],
+    [symbols[4], symbols[5], symbols[6]]
+  ]);
+  const [spinning, setSpinning] = useState([false, false, false]);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [lastWin, setLastWin] = useState(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const getRandomSymbol = () => symbols[Math.floor(Math.random() * symbols.length)];
+
+  const calculateWin = (result) => {
+    const middleRow = [result[0][1], result[1][1], result[2][1]];
+    
+    // Sprawdź 3 takie same
+    if (middleRow[0] === middleRow[1] && middleRow[1] === middleRow[2]) {
+      const symbol = middleRow[0];
+      const multiplier = multipliers[symbol] || 2;
+      return { win: betAmount * multiplier, symbol, count: 3 };
+    }
+    
+    // Sprawdź 2 takie same
+    if (middleRow[0] === middleRow[1] || middleRow[1] === middleRow[2]) {
+      const symbol = middleRow[0] === middleRow[1] ? middleRow[0] : middleRow[1];
+      const multiplier = (multipliers[symbol] || 2) * 0.2;
+      return { win: Math.floor(betAmount * multiplier), symbol, count: 2 };
+    }
+
+    return { win: 0, symbol: null, count: 0 };
+  };
+
+  const generateResult = () => {
+    // Symulacja RTP
+    const random = Math.random() * 100;
+    const isWin = random < rtp - 50; // Szansa na wygraną
+    
+    if (isWin) {
+      // Wymuś wygraną kombinację
+      const winSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+      const bigWin = Math.random() < 0.1; // 10% szans na 3 takie same
+      
+      if (bigWin) {
+        return [
+          [getRandomSymbol(), winSymbol, getRandomSymbol()],
+          [getRandomSymbol(), winSymbol, getRandomSymbol()],
+          [getRandomSymbol(), winSymbol, getRandomSymbol()]
+        ];
+      } else {
+        // 2 takie same
+        return [
+          [getRandomSymbol(), winSymbol, getRandomSymbol()],
+          [getRandomSymbol(), winSymbol, getRandomSymbol()],
+          [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()]
+        ];
+      }
+    }
+    
+    // Losowy wynik (najczęściej przegrana)
+    return [
+      [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()],
+      [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()],
+      [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()]
+    ];
+  };
+
+  const spin = async () => {
+    if (isSpinning || disabled) return;
+    
+    if (onSpin) onSpin();
+    
+    setIsSpinning(true);
+    setLastWin(null);
+    setSpinning([true, true, true]);
+
+    const finalResult = generateResult();
+
+    // Zatrzymaj bębny po kolei
+    for (let i = 0; i < 3; i++) {
+      await new Promise(resolve => setTimeout(resolve, REEL_SPIN_DURATION + i * REEL_DELAY));
+      setReels(prev => {
+        const newReels = [...prev];
+        newReels[i] = finalResult[i];
+        return newReels;
+      });
+      setSpinning(prev => {
+        const newSpinning = [...prev];
+        newSpinning[i] = false;
+        return newSpinning;
+      });
+    }
+
+    setIsSpinning(false);
+    
+    const winResult = calculateWin(finalResult);
+    setLastWin(winResult);
+    
+    if (onResult) {
+      onResult({
+        result: finalResult,
+        win: winResult.win,
+        isWin: winResult.win > 0
+      });
+    }
+  };
+
+  return (
+    <div className="relative">
+      {/* Ramka automatu */}
+      <div className="bg-gradient-to-b from-yellow-600 via-yellow-500 to-yellow-700 p-3 rounded-2xl shadow-2xl">
+        <div className="bg-gradient-to-b from-gray-900 to-gray-800 p-4 rounded-xl">
+          
+          {/* Nagłówek */}
+          <div className="text-center mb-4">
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent">
+              🎰 MEGA SLOTS 🎰
+            </h3>
+          </div>
+
+          {/* Bębny */}
+          <div className="bg-black/50 p-4 rounded-lg border-4 border-yellow-600/50">
+            <div className="flex justify-center gap-2">
+              {[0, 1, 2].map((reelIndex) => (
+                <div
+                  key={reelIndex}
+                  className="bg-gradient-to-b from-gray-100 to-gray-300 rounded-lg p-1 w-24 h-32 overflow-hidden relative"
+                >
+                  {/* Linia wygranej */}
+                  <div className="absolute inset-y-0 left-0 right-0 flex items-center pointer-events-none z-10">
+                    <div className="w-full h-10 border-t-2 border-b-2 border-red-500/50 bg-red-500/10" />
+                  </div>
+                  
+                  <div className={`flex flex-col items-center justify-center h-full ${spinning[reelIndex] ? 'animate-spin-slot' : ''}`}>
+                    {spinning[reelIndex] ? (
+                      <motion.div
+                        animate={{ y: [0, -100, 0] }}
+                        transition={{ duration: 0.1, repeat: Infinity }}
+                        className="flex flex-col gap-2"
+                      >
+                        {[0, 1, 2, 3, 4].map((i) => (
+                          <span key={i} className="text-4xl">
+                            {symbols[Math.floor(Math.random() * symbols.length)]}
+                          </span>
+                        ))}
+                      </motion.div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        {reels[reelIndex].map((symbol, idx) => (
+                          <motion.span
+                            key={idx}
+                            initial={{ scale: 0.5, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className={`text-3xl ${idx === 1 ? 'text-4xl' : 'opacity-50'}`}
+                          >
+                            {symbol}
+                          </motion.span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Wynik */}
+          <AnimatePresence>
+            {lastWin && lastWin.win > 0 && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              >
+                <div className="bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-400 text-black px-8 py-4 rounded-xl shadow-2xl border-4 border-yellow-600">
+                  <div className="text-center">
+                    <div className="text-lg font-bold">🎉 WYGRANA! 🎉</div>
+                    <div className="text-3xl font-bold">+{lastWin.win.toLocaleString()}</div>
+                    <div className="text-sm">{lastWin.count}x {lastWin.symbol}</div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Kontrolki */}
+          <div className="mt-4 flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="text-yellow-400"
+            >
+              {soundEnabled ? <Volume2 /> : <VolumeX />}
+            </Button>
+            
+            <Button
+              onClick={spin}
+              disabled={isSpinning || disabled}
+              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold text-xl px-12 py-6 rounded-full shadow-lg transform hover:scale-105 transition-all"
+            >
+              {isSpinning ? (
+                <>
+                  <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                  KRĘCĘ...
+                </>
+              ) : (
+                'SPIN 🎰'
+              )}
+            </Button>
+
+            <div className="text-yellow-400 font-bold">
+              STAWKA: {betAmount}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes spin-slot {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(-100%); }
+        }
+        .animate-spin-slot {
+          animation: spin-slot 0.1s linear infinite;
+        }
+      `}</style>
+    </div>
+  );
+}

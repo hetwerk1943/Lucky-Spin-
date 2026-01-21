@@ -1,0 +1,353 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import {
+  User,
+  Coins,
+  Trophy,
+  Star,
+  History,
+  Award,
+  TrendingUp,
+  Zap,
+  Gift,
+  Crown,
+  Calendar
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { pl } from 'date-fns/locale';
+
+export default function Profile() {
+  const [user, setUser] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const currentUser = await base44.auth.me();
+        setUser(currentUser);
+        setIsLoggedIn(true);
+      } catch {
+        // Niezalogowany
+        setUser({
+          demo_balance: parseInt(localStorage.getItem('demo_balance') || '10000'),
+          total_spins: parseInt(localStorage.getItem('total_spins') || '0'),
+          total_wins: parseInt(localStorage.getItem('total_wins') || '0'),
+          biggest_win: parseInt(localStorage.getItem('biggest_win') || '0'),
+          level: parseInt(localStorage.getItem('level') || '1'),
+          xp: parseInt(localStorage.getItem('xp') || '0')
+        });
+      }
+    };
+    loadUser();
+  }, []);
+
+  const { data: gameSessions = [] } = useQuery({
+    queryKey: ['user-sessions'],
+    queryFn: () => base44.entities.GameSession.filter({ created_by: user?.email }, '-created_date', 20),
+    enabled: !!user?.email
+  });
+
+  const { data: achievements = [] } = useQuery({
+    queryKey: ['achievements'],
+    queryFn: () => base44.entities.Achievement.list()
+  });
+
+  const { data: userAchievements = [] } = useQuery({
+    queryKey: ['user-achievements'],
+    queryFn: () => base44.entities.UserAchievement.filter({ created_by: user?.email }),
+    enabled: !!user?.email
+  });
+
+  const xpForNextLevel = user?.level ? user.level * 1000 : 1000;
+  const xpProgress = user?.xp ? (user.xp / xpForNextLevel) * 100 : 0;
+
+  const claimDailyBonus = async () => {
+    const newBalance = (user?.demo_balance || 0) + 1000;
+    if (isLoggedIn) {
+      await base44.auth.updateMe({ demo_balance: newBalance });
+    } else {
+      localStorage.setItem('demo_balance', String(newBalance));
+    }
+    setUser(prev => ({ ...prev, demo_balance: newBalance }));
+  };
+
+  const stats = [
+    {
+      label: 'Całkowite spiny',
+      value: user?.total_spins || 0,
+      icon: Zap,
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/20'
+    },
+    {
+      label: 'Wygrane rundy',
+      value: user?.total_wins || 0,
+      icon: Trophy,
+      color: 'text-green-400',
+      bgColor: 'bg-green-500/20'
+    },
+    {
+      label: 'Największa wygrana',
+      value: user?.biggest_win || 0,
+      icon: Star,
+      color: 'text-yellow-400',
+      bgColor: 'bg-yellow-500/20'
+    },
+    {
+      label: 'Współczynnik wygranych',
+      value: user?.total_spins ? `${((user.total_wins / user.total_spins) * 100).toFixed(1)}%` : '0%',
+      icon: TrendingUp,
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-500/20'
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-black py-8 px-4">
+      <div className="max-w-5xl mx-auto">
+        {/* Profile Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-2xl p-6 md:p-8 border border-purple-500/30 mb-8"
+        >
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="bg-gradient-to-br from-yellow-500 to-orange-500 w-24 h-24 rounded-full flex items-center justify-center">
+              {user?.is_vip ? (
+                <Crown className="h-12 w-12 text-white" />
+              ) : (
+                <User className="h-12 w-12 text-white" />
+              )}
+            </div>
+
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+                <h1 className="text-2xl font-bold text-white">
+                  {user?.full_name || 'Gracz Demo'}
+                </h1>
+                {user?.is_vip && (
+                  <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black">
+                    <Crown className="h-3 w-3 mr-1" />
+                    VIP
+                  </Badge>
+                )}
+              </div>
+              <p className="text-gray-400 mb-4">{user?.email || 'Gość'}</p>
+
+              {/* Level progress */}
+              <div className="max-w-xs mx-auto md:mx-0">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-400">Poziom {user?.level || 1}</span>
+                  <span className="text-sm text-gray-400">{user?.xp || 0} / {xpForNextLevel} XP</span>
+                </div>
+                <Progress value={xpProgress} className="h-3 bg-gray-700" />
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="bg-gray-800/50 rounded-xl p-4 border border-yellow-500/30">
+                <Coins className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
+                <div className="text-3xl font-bold text-white">
+                  {(user?.demo_balance || 0).toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-400">Punkty demo</div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Daily Bonus */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-gradient-to-r from-green-900/30 to-emerald-900/30 rounded-xl p-6 border border-green-500/30 mb-8"
+        >
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="bg-green-500/20 p-3 rounded-full">
+                <Gift className="h-8 w-8 text-green-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Dzienny bonus</h3>
+                <p className="text-gray-400 text-sm">Odbierz 1,000 punktów co 24 godziny</p>
+              </div>
+            </div>
+            <Button
+              onClick={claimDailyBonus}
+              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold px-8"
+            >
+              <Gift className="mr-2 h-4 w-4" />
+              Odbierz +1,000
+            </Button>
+          </div>
+        </motion.div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {stats.map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + index * 0.05 }}
+            >
+              <Card className="bg-gray-800/50 border-gray-700/50">
+                <CardContent className="p-4 text-center">
+                  <div className={`${stat.bgColor} w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3`}>
+                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
+                  </div>
+                  <div className="text-2xl font-bold text-white mb-1">
+                    {typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}
+                  </div>
+                  <div className="text-xs text-gray-400">{stat.label}</div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Tabs */}
+        <Tabs defaultValue="history" className="space-y-6">
+          <TabsList className="bg-gray-800/50 border border-gray-700/50">
+            <TabsTrigger value="history" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black">
+              <History className="h-4 w-4 mr-2" />
+              Historia gier
+            </TabsTrigger>
+            <TabsTrigger value="achievements" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black">
+              <Award className="h-4 w-4 mr-2" />
+              Osiągnięcia
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="history">
+            <Card className="bg-gray-800/50 border-gray-700/50">
+              <CardHeader>
+                <CardTitle className="text-white">Ostatnie gry</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {gameSessions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <History className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400">Brak historii gier</p>
+                    <Link to={createPageUrl('Slots')}>
+                      <Button className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-black">
+                        Zagraj teraz
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {gameSessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className={`flex items-center justify-between p-3 rounded-lg ${
+                          session.is_win ? 'bg-green-500/10 border border-green-500/20' : 'bg-gray-700/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="text-2xl">
+                            {session.result?.join(' ') || '🎰'}
+                          </div>
+                          <div>
+                            <div className="font-medium text-white">{session.game_name}</div>
+                            <div className="text-xs text-gray-400">
+                              {session.created_date && format(new Date(session.created_date), 'dd MMM, HH:mm', { locale: pl })}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`font-bold ${session.is_win ? 'text-green-400' : 'text-red-400'}`}>
+                            {session.is_win ? `+${session.win_amount}` : `-${session.bet_amount}`}
+                          </div>
+                          <div className="text-xs text-gray-500">Stawka: {session.bet_amount}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="achievements">
+            <Card className="bg-gray-800/50 border-gray-700/50">
+              <CardHeader>
+                <CardTitle className="text-white">Twoje osiągnięcia</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {achievements.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Award className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-400">Osiągnięcia zostaną wkrótce dodane</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {achievements.map((achievement) => {
+                      const isUnlocked = userAchievements.some(ua => ua.achievement_id === achievement.id);
+                      return (
+                        <div
+                          key={achievement.id}
+                          className={`p-4 rounded-lg border ${
+                            isUnlocked 
+                              ? 'bg-yellow-500/10 border-yellow-500/30' 
+                              : 'bg-gray-700/30 border-gray-600/30 opacity-60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`text-3xl ${!isUnlocked && 'grayscale'}`}>
+                              {achievement.icon || '🏆'}
+                            </div>
+                            <div>
+                              <div className="font-bold text-white">{achievement.name}</div>
+                              <div className="text-sm text-gray-400">{achievement.description}</div>
+                              {isUnlocked && (
+                                <Badge className="mt-2 bg-green-500/20 text-green-400 border-green-500/30">
+                                  Odblokowane
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Login prompt for guests */}
+        {!isLoggedIn && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-8 bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 text-center"
+          >
+            <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-white mb-2">Zaloguj się, aby zapisać postępy</h3>
+            <p className="text-gray-400 mb-4">
+              Twoje statystyki i osiągnięcia zostaną zachowane na Twoim koncie
+            </p>
+            <Button
+              onClick={() => base44.auth.redirectToLogin()}
+              className="bg-yellow-500 hover:bg-yellow-600 text-black"
+            >
+              Zaloguj się
+            </Button>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+}

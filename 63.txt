@@ -1,0 +1,192 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Search,
+  Filter,
+  SlidersHorizontal,
+  Gamepad2,
+  Star,
+  Zap,
+  TrendingUp
+} from 'lucide-react';
+import GameCard from '@/components/casino/GameCard';
+
+export default function Slots() {
+  const [user, setUser] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState('all');
+  const [selectedVolatility, setSelectedVolatility] = useState('all');
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const currentUser = await base44.auth.me();
+        setUser(currentUser);
+      } catch {
+        // Niezalogowany
+      }
+    };
+    loadUser();
+  }, []);
+
+  const { data: games = [], isLoading } = useQuery({
+    queryKey: ['all-games'],
+    queryFn: () => base44.entities.SlotGame.filter({ is_active: true })
+  });
+
+  const filteredGames = games.filter(game => {
+    const matchesSearch = game.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (game.description && game.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesType = selectedType === 'all' || game.type === selectedType;
+    const matchesVolatility = selectedVolatility === 'all' || game.volatility === selectedVolatility;
+    return matchesSearch && matchesType && matchesVolatility;
+  });
+
+  const categories = [
+    { id: 'all', label: 'Wszystkie', icon: Gamepad2 },
+    { id: 'classic', label: 'Klasyczne', icon: Star },
+    { id: 'modern', label: 'Nowoczesne', icon: Zap },
+    { id: 'jackpot', label: 'Jackpot', icon: TrendingUp }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-black py-8 px-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <motion.h1 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl font-bold text-white mb-2"
+          >
+            🎰 Automaty DEMO
+          </motion.h1>
+          <p className="text-gray-400">
+            Wybierz automat i graj bez ryzyka. Wszystkie gry są dostępne za darmo!
+          </p>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-gray-800/50 backdrop-blur rounded-xl p-4 mb-8 border border-gray-700/50">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Szukaj gry..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-gray-900/50 border-gray-700 text-white placeholder:text-gray-500"
+              />
+            </div>
+
+            {/* Type filter */}
+            <div className="flex gap-2 overflow-x-auto pb-2 lg:pb-0">
+              {categories.map((cat) => (
+                <Button
+                  key={cat.id}
+                  variant={selectedType === cat.id ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedType(cat.id)}
+                  className={selectedType === cat.id 
+                    ? 'bg-yellow-500 hover:bg-yellow-600 text-black' 
+                    : 'border-gray-600 text-gray-300 hover:bg-gray-700'
+                  }
+                >
+                  <cat.icon className="h-4 w-4 mr-1" />
+                  {cat.label}
+                </Button>
+              ))}
+            </div>
+
+            {/* Volatility filter */}
+            <div className="flex gap-2">
+              <Button
+                variant={selectedVolatility === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedVolatility('all')}
+                className={selectedVolatility === 'all' 
+                  ? 'bg-gray-600 hover:bg-gray-500 text-white' 
+                  : 'border-gray-600 text-gray-300 hover:bg-gray-700'
+                }
+              >
+                Wszystkie RTP
+              </Button>
+              <Button
+                variant={selectedVolatility === 'high' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedVolatility('high')}
+                className={selectedVolatility === 'high' 
+                  ? 'bg-red-500/20 text-red-400 border-red-500/30' 
+                  : 'border-gray-600 text-gray-300 hover:bg-gray-700'
+                }
+              >
+                Wysokie RTP
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats bar */}
+        <div className="flex items-center gap-4 mb-6 text-sm text-gray-400">
+          <span>Znaleziono: <strong className="text-white">{filteredGames.length}</strong> gier</span>
+          {user?.is_vip && (
+            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+              <Star className="h-3 w-3 mr-1" />
+              VIP - dostęp do wszystkich gier
+            </Badge>
+          )}
+        </div>
+
+        {/* Games grid */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="bg-gray-800/50 rounded-xl h-64 animate-pulse" />
+            ))}
+          </div>
+        ) : filteredGames.length === 0 ? (
+          <div className="text-center py-20">
+            <Gamepad2 className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-white mb-2">Brak gier</h3>
+            <p className="text-gray-400">
+              {searchQuery 
+                ? 'Nie znaleziono gier pasujących do wyszukiwania'
+                : 'Gry zostaną wkrótce dodane'
+              }
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredGames.map((game, index) => (
+              <motion.div
+                key={game.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <GameCard game={game} userIsVip={user?.is_vip} />
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Info section */}
+        <div className="mt-12 bg-gray-800/30 rounded-xl p-6 border border-gray-700/50">
+          <h3 className="text-lg font-bold text-white mb-3">ℹ️ Informacja o grach DEMO</h3>
+          <p className="text-gray-400 text-sm">
+            Wszystkie gry na tej stronie są wersjami demonstracyjnymi i służą wyłącznie celom rozrywkowym. 
+            Nie oferujemy gier na prawdziwe pieniądze. RTP (Return to Player) jest symulowany 
+            i może różnić się od rzeczywistych wartości w kasynach.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

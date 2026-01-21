@@ -1,0 +1,67 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, Shield, X } from 'lucide-react';
+
+export default function AgeVerificationModal({ onVerify, onDecline }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-8 max-w-md w-full border-2 border-yellow-600/50 shadow-2xl"
+      >
+        <div className="text-center">
+          <div className="bg-yellow-600/20 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Shield className="h-10 w-10 text-yellow-500" />
+          </div>
+
+          <h2 className="text-2xl font-bold text-white mb-4">
+            Weryfikacja wieku
+          </h2>
+
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+              <p className="text-gray-300 text-sm text-left">
+                Ta strona zawiera gry hazardowe w wersji demonstracyjnej. 
+                Aby kontynuować, musisz potwierdzić, że masz ukończone <strong className="text-yellow-400">18 lat</strong>.
+              </p>
+            </div>
+          </div>
+
+          <p className="text-gray-400 text-sm mb-6">
+            Gry na tej stronie są przeznaczone wyłącznie do celów rozrywkowych. 
+            Nie oferujemy gier na prawdziwe pieniądze.
+          </p>
+
+          <div className="space-y-3">
+            <Button
+              onClick={onVerify}
+              className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-6 text-lg"
+            >
+              ✓ Mam ukończone 18 lat
+            </Button>
+
+            <Button
+              onClick={onDecline}
+              variant="outline"
+              className="w-full border-gray-600 text-gray-400 hover:bg-gray-800"
+            >
+              Nie mam 18 lat - opuść stronę
+            </Button>
+          </div>
+
+          <p className="text-xs text-gray-500 mt-6">
+            Klikając "Mam ukończone 18 lat", potwierdzasz swoją pełnoletność 
+            i akceptujesz regulamin serwisu.
+          </p>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
