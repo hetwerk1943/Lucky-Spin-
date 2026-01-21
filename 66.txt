@@ -1,0 +1,129 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Lock, Eye } from 'lucide-react';
+
+export default function Privacy() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-black py-8 px-4">
+      <div className="max-w-3xl mx-auto">
+        <Link to={createPageUrl('Home')}>
+          <Button variant="ghost" className="text-gray-400 hover:text-white mb-6">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Powrót
+          </Button>
+        </Link>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gray-800/50 backdrop-blur rounded-xl p-8 border border-gray-700/50"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <Lock className="h-8 w-8 text-yellow-500" />
+            <h1 className="text-3xl font-bold text-white">Polityka prywatności</h1>
+          </div>
+
+          <div className="prose prose-invert max-w-none">
+            <p className="text-gray-400">
+              Ostatnia aktualizacja: {new Date().toLocaleDateString('pl-PL')}
+            </p>
+
+            <h2 className="text-xl font-bold text-white mt-6 mb-3">1. Administrator danych</h2>
+            <p className="text-gray-300">
+              Administratorem danych osobowych jest właściciel serwisu Casino Demo.
+            </p>
+
+            <h2 className="text-xl font-bold text-white mt-6 mb-3">2. Zbierane dane</h2>
+            <p className="text-gray-300">
+              Zbieramy następujące dane:
+            </p>
+            <ul className="text-gray-300 list-disc ml-6 space-y-2">
+              <li><strong>Dane konta:</strong> adres e-mail, nazwa użytkownika</li>
+              <li><strong>Dane o grze:</strong> statystyki gier, osiągnięcia, saldo punktów</li>
+              <li><strong>Dane techniczne:</strong> adres IP, typ przeglądarki, dane urządzenia</li>
+              <li><strong>Pliki cookies:</strong> preferencje użytkownika, sesja</li>
+            </ul>
+
+            <h2 className="text-xl font-bold text-white mt-6 mb-3">3. Cel przetwarzania</h2>
+            <p className="text-gray-300">
+              Dane przetwarzamy w celu:
+            </p>
+            <ul className="text-gray-300 list-disc ml-6 space-y-2">
+              <li>Świadczenia usług serwisu</li>
+              <li>Prowadzenia konta użytkownika</li>
+              <li>Zapisywania postępów w grach</li>
+              <li>Analizy statystycznej i poprawy jakości usług</li>
+              <li>Wyświetlania reklam (jeśli dotyczy)</li>
+            </ul>
+
+            <h2 className="text-xl font-bold text-white mt-6 mb-3">4. Podstawa prawna</h2>
+            <p className="text-gray-300">
+              Przetwarzanie danych odbywa się na podstawie:
+            </p>
+            <ul className="text-gray-300 list-disc ml-6 space-y-2">
+              <li>Zgody użytkownika (art. 6 ust. 1 lit. a RODO)</li>
+              <li>Wykonania umowy (art. 6 ust. 1 lit. b RODO)</li>
+              <li>Prawnie uzasadnionego interesu (art. 6 ust. 1 lit. f RODO)</li>
+            </ul>
+
+            <h2 className="text-xl font-bold text-white mt-6 mb-3">5. Okres przechowywania</h2>
+            <p className="text-gray-300">
+              Dane przechowujemy przez okres korzystania z serwisu oraz przez 
+              okres wymagany przepisami prawa po zakończeniu korzystania z usług.
+            </p>
+
+            <h2 className="text-xl font-bold text-white mt-6 mb-3">6. Prawa użytkownika</h2>
+            <p className="text-gray-300">
+              Użytkownik ma prawo do:
+            </p>
+            <ul className="text-gray-300 list-disc ml-6 space-y-2">
+              <li>Dostępu do swoich danych</li>
+              <li>Sprostowania danych</li>
+              <li>Usunięcia danych</li>
+              <li>Ograniczenia przetwarzania</li>
+              <li>Przenoszenia danych</li>
+              <li>Sprzeciwu wobec przetwarzania</li>
+              <li>Cofnięcia zgody</li>
+            </ul>
+
+            <h2 className="text-xl font-bold text-white mt-6 mb-3">7. Pliki cookies</h2>
+            <p className="text-gray-300">
+              Serwis wykorzystuje pliki cookies w celu:
+            </p>
+            <ul className="text-gray-300 list-disc ml-6 space-y-2">
+              <li>Utrzymania sesji użytkownika</li>
+              <li>Zapamiętywania preferencji</li>
+              <li>Analizy ruchu na stronie</li>
+              <li>Personalizacji treści</li>
+            </ul>
+
+            <h2 className="text-xl font-bold text-white mt-6 mb-3">8. Bezpieczeństwo</h2>
+            <p className="text-gray-300">
+              Stosujemy odpowiednie środki techniczne i organizacyjne w celu 
+              ochrony danych osobowych przed nieuprawnionym dostępem, utratą lub zniszczeniem.
+            </p>
+
+            <h2 className="text-xl font-bold text-white mt-6 mb-3">9. Kontakt</h2>
+            <p className="text-gray-300">
+              W sprawach związanych z przetwarzaniem danych osobowych prosimy 
+              o kontakt poprzez formularz kontaktowy na stronie.
+            </p>
+          </div>
+
+          <div className="mt-8 p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
+            <div className="flex items-center gap-2 text-blue-400">
+              <Eye className="h-5 w-5" />
+              <span className="font-bold">Twoje dane są bezpieczne</span>
+            </div>
+            <p className="text-gray-400 text-sm mt-2">
+              Nie sprzedajemy ani nie udostępniamy Twoich danych osobom trzecim w celach marketingowych.
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}

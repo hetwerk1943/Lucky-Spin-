@@ -1,0 +1,326 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { 
+  ArrowLeft, 
+  Info, 
+  TrendingUp, 
+  Zap, 
+  History,
+  Gift,
+  AlertCircle
+} from 'lucide-react';
+import SlotMachine from '@/components/slots/SlotMachine';
+import BetControls from '@/components/casino/BetControls';
+import BalanceDisplay from '@/components/casino/BalanceDisplay';
+import UserStats from '@/components/casino/UserStats';
+
+export default function PlaySlot() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const gameId = urlParams.get('id');
+  
+  const queryClient = useQueryClient();
+  const [user, setUser] = useState(null);
+  const [bet, setBet] = useState(100);
+  const [lastChange, setLastChange] = useState(0);
+  const [gameHistory, setGameHistory] = useState([]);
+  const [showBonus, setShowBonus] = useState(false);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const currentUser = await base44.auth.me();
+        setUser(currentUser);
+        if (!currentUser.demo_balance) {
+          await base44.auth.updateMe({ demo_balance: 10000 });
+          setUser({ ...currentUser, demo_balance: 10000 });
+        }
+        // Pokaż bonus jeśli saldo poniżej 500
+        if (currentUser.demo_balance < 500) {
+          setShowBonus(true);
+        }
+      } catch {
+        // Niezalogowany - użyj localStorage
+        const localBalance = localStorage.getItem('demo_balance');
+        if (!localBalance) {
+          localStorage.setItem('demo_balance', '10000');
+        }
+        setUser({
+          demo_balance: parseInt(localStorage.getItem('demo_balance') || '10000'),
+          total_spins: parseInt(localStorage.getItem('total_spins') || '0'),
+          total_wins: parseInt(localStorage.getItem('total_wins') || '0'),
+          biggest_win: parseInt(localStorage.getItem('biggest_win') || '0'),
+          level: parseInt(localStorage.getItem('level') || '1'),
+          xp: parseInt(localStorage.getItem('xp') || '0')
+        });
+      }
+    };
+    loadUser();
+  }, []);
+
+  const { data: game, isLoading: gameLoading } = useQuery({
+    queryKey: ['game', gameId],
+    queryFn: () => base44.entities.SlotGame.filter({ id: gameId }),
+    enabled: !!gameId,
+    select: (data) => data[0]
+  });
+
+  const handleSpin = () => {
+    // Odejmij stawkę
+    const newBalance = (user?.demo_balance || 0) - bet;
+    updateUserData({ demo_balance: newBalance });
+    setLastChange(-bet);
+  };
+
+  const handleResult = async ({ result, win, isWin }) => {
+    const newSpins = (user?.total_spins || 0) + 1;
+    const newWins = isWin ? (user?.total_wins || 0) + 1 : (user?.total_wins || 0);
+    const newBiggestWin = win > (user?.biggest_win || 0) ? win : (user?.biggest_win || 0);
+    const newBalance = (user?.demo_balance || 0) + win;
+    const newXp = (user?.xp || 0) + (isWin ? 50 : 10);
+    
+    // Oblicz poziom
+    const xpPerLevel = 1000;
+    const newLevel = Math.floor(newXp / xpPerLevel) + 1;
+
+    const updates = {
+      demo_balance: newBalance,
+      total_spins: newSpins,
+      total_wins: newWins,
+      biggest_win: newBiggestWin,
+      xp: newXp,
+      level: newLevel
+    };
+
+    updateUserData(updates);
+    
+    if (win > 0) {
+      setLastChange(win);
+    }
+
+    // Dodaj do historii
+    setGameHistory(prev => [{
+      result: result.map(r => r[1]).join(' '),
+      bet,
+      win,
+      isWin,
+      time: new Date()
+    }, ...prev.slice(0, 9)]);
+
+    // Zapisz sesję gry
+    if (user?.email) {
+      await base44.entities.GameSession.create({
+        game_id: gameId,
+        game_name: game?.name,
+        bet_amount: bet,
+        win_amount: win,
+        result: result.map(r => r[1]),
+        is_win: isWin
+      });
+    }
+
+    // Pokaż bonus jeśli mało punktów
+    if (newBalance < 500) {
+      setShowBonus(true);
+    }
+  };
+
+  const updateUserData = async (updates) => {
+    if (user?.email) {
+      await base44.auth.updateMe(updates);
+    } else {
+      // Zapisz lokalnie
+      Object.entries(updates).forEach(([key, value]) => {
+        localStorage.setItem(key, String(value));
+      });
+    }
+    setUser(prev => ({ ...prev, ...updates }));
+  };
+
+  const claimBonus = async () => {
+    const newBalance = (user?.demo_balance || 0) + 1000;
+    await updateUserData({ demo_balance: newBalance });
+    setLastChange(1000);
+    setShowBonus(false);
+  };
+
+  const defaultSymbols = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣', '⭐', '🎰'];
+  const symbols = game?.symbols?.map(s => s.emoji) || defaultSymbols;
+  const multipliers = game?.symbols?.reduce((acc, s) => {
+    acc[s.emoji] = s.multiplier;
+    return acc;
+  }, {}) || { '7️⃣': 50, '💎': 30, '⭐': 20, '🍇': 10, '🍊': 5, '🍋': 3, '🍒': 2 };
+
+  if (gameLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-12 w-12 border-4 border-yellow-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-gray-400">Ładowanie gry...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!game) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">Gra nie znaleziona</h2>
+          <p className="text-gray-400 mb-6">Wybrana gra nie istnieje lub została usunięta.</p>
+          <Link to={createPageUrl('Slots')}>
+            <Button className="bg-yellow-500 hover:bg-yellow-600 text-black">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Wróć do gier
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-black py-6 px-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Link to={createPageUrl('Slots')}>
+              <Button variant="ghost" className="text-gray-400 hover:text-white">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-white">{game.name}</h1>
+              <div className="flex items-center gap-2 mt-1">
+                <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                  <TrendingUp className="h-3 w-3 mr-1" />
+                  RTP {game.rtp}%
+                </Badge>
+                <Badge variant="outline" className={`
+                  ${game.volatility === 'low' ? 'bg-green-500/20 text-green-400 border-green-500/30' : ''}
+                  ${game.volatility === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : ''}
+                  ${game.volatility === 'high' ? 'bg-red-500/20 text-red-400 border-red-500/30' : ''}
+                `}>
+                  <Zap className="h-3 w-3 mr-1" />
+                  {game.volatility === 'low' ? 'Niska' : game.volatility === 'medium' ? 'Średnia' : 'Wysoka'} zmienność
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main game area */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Balance */}
+            <BalanceDisplay 
+              balance={user?.demo_balance || 0}
+              lastChange={lastChange}
+              showBonus={showBonus}
+              onClaimBonus={claimBonus}
+            />
+
+            {/* Slot Machine */}
+            <SlotMachine
+              symbols={symbols}
+              multipliers={multipliers}
+              betAmount={bet}
+              onSpin={handleSpin}
+              onResult={handleResult}
+              disabled={(user?.demo_balance || 0) < bet}
+              rtp={game.rtp || 96}
+            />
+
+            {/* Bet Controls */}
+            <BetControls
+              bet={bet}
+              onBetChange={setBet}
+              minBet={game.min_bet || 10}
+              maxBet={game.max_bet || 1000}
+              balance={user?.demo_balance || 0}
+            />
+
+            {/* Game info */}
+            {game.description && (
+              <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="h-4 w-4 text-gray-400" />
+                  <span className="text-gray-400 text-sm">O grze</span>
+                </div>
+                <p className="text-gray-300 text-sm">{game.description}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* User Stats */}
+            <UserStats user={user} />
+
+            {/* Game History */}
+            <div className="bg-gray-800/50 backdrop-blur rounded-xl p-4 border border-gray-700/50">
+              <div className="flex items-center gap-2 mb-4">
+                <History className="h-4 w-4 text-gray-400" />
+                <span className="text-gray-400 text-sm">Historia gry</span>
+              </div>
+              
+              {gameHistory.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-4">
+                  Brak historii - zagraj swoją pierwszą rundę!
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {gameHistory.map((entry, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className={`flex items-center justify-between p-2 rounded-lg ${
+                        entry.isWin ? 'bg-green-500/10' : 'bg-gray-700/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{entry.result}</span>
+                      </div>
+                      <div className="text-right">
+                        <div className={`font-bold ${entry.isWin ? 'text-green-400' : 'text-gray-400'}`}>
+                          {entry.isWin ? `+${entry.win}` : `-${entry.bet}`}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Paytable */}
+            <div className="bg-gray-800/50 backdrop-blur rounded-xl p-4 border border-gray-700/50">
+              <h3 className="text-white font-bold mb-3">💰 Tabela wypłat</h3>
+              <div className="space-y-2 text-sm">
+                {Object.entries(multipliers).sort((a, b) => b[1] - a[1]).map(([symbol, mult]) => (
+                  <div key={symbol} className="flex items-center justify-between">
+                    <span className="text-2xl">{symbol} {symbol} {symbol}</span>
+                    <span className="text-yellow-400 font-bold">x{mult}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Disclaimer */}
+        <div className="mt-8 text-center text-xs text-gray-500">
+          Ta gra jest wersją demonstracyjną i służy wyłącznie celom rozrywkowym. 
+          Nie oferujemy gier na prawdziwe pieniądze. 18+
+        </div>
+      </div>
+    </div>
+  );
+}

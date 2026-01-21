@@ -1,0 +1,33 @@
+{
+  "name": "GameSession",
+  "type": "object",
+  "properties": {
+    "game_id": {
+      "type": "string",
+      "description": "ID gry"
+    },
+    "game_name": {
+      "type": "string"
+    },
+    "bet_amount": {
+      "type": "number"
+    },
+    "win_amount": {
+      "type": "number"
+    },
+    "result": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Wynik kr\u0119cenia"
+    },
+    "is_win": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "game_id",
+    "bet_amount"
+  ]
+}

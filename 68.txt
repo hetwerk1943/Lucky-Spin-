@@ -1,0 +1,265 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Gamepad2, 
+  Trophy, 
+  Shield, 
+  Sparkles, 
+  Star,
+  ArrowRight,
+  Gift,
+  Users,
+  Zap
+} from 'lucide-react';
+import GameCard from '@/components/casino/GameCard';
+import AgeVerificationModal from '@/components/casino/AgeVerificationModal';
+
+export default function Home() {
+  const [showAgeModal, setShowAgeModal] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const currentUser = await base44.auth.me();
+        setUser(currentUser);
+        if (!currentUser.is_age_verified) {
+          setShowAgeModal(true);
+        }
+      } catch {
+        // Niezalogowany użytkownik
+        const verified = localStorage.getItem('age_verified');
+        if (!verified) {
+          setShowAgeModal(true);
+        }
+      }
+    };
+    checkUser();
+  }, []);
+
+  const { data: games = [] } = useQuery({
+    queryKey: ['featured-games'],
+    queryFn: () => base44.entities.SlotGame.filter({ is_active: true }, '-created_date', 6)
+  });
+
+  const handleAgeVerify = async () => {
+    localStorage.setItem('age_verified', 'true');
+    if (user) {
+      await base44.auth.updateMe({ is_age_verified: true });
+    }
+    setShowAgeModal(false);
+  };
+
+  const handleAgeDecline = () => {
+    window.location.href = 'https://www.google.com';
+  };
+
+  const features = [
+    {
+      icon: Shield,
+      title: 'Bezpieczna zabawa',
+      description: 'Graj bez ryzyka utraty prawdziwych pieniędzy',
+      color: 'from-green-500 to-emerald-600'
+    },
+    {
+      icon: Sparkles,
+      title: 'Realistyczne emocje',
+      description: 'Autentyczne doznania jak w prawdziwym kasynie',
+      color: 'from-purple-500 to-pink-600'
+    },
+    {
+      icon: Trophy,
+      title: 'System osiągnięć',
+      description: 'Zdobywaj poziomy i odznaki za grę',
+      color: 'from-yellow-500 to-orange-600'
+    },
+    {
+      icon: Users,
+      title: 'Turnieje',
+      description: 'Rywalizuj z innymi graczami o punkty',
+      color: 'from-blue-500 to-cyan-600'
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-900 to-black">
+      {showAgeModal && (
+        <AgeVerificationModal 
+          onVerify={handleAgeVerify}
+          onDecline={handleAgeDecline}
+        />
+      )}
+
+      {/* Hero Section */}
+      <section className="relative overflow-hidden py-20 px-4">
+        {/* Background effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-yellow-500/20 rounded-full blur-3xl" />
+        </div>
+
+        <div className="max-w-6xl mx-auto relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+          >
+            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 mb-6 text-sm">
+              🎰 100% Darmowa rozrywka
+            </Badge>
+            
+            <h1 className="text-5xl md:text-7xl font-bold mb-6">
+              <span className="text-white">Kasyno </span>
+              <span className="bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500 bg-clip-text text-transparent">
+                DEMO
+              </span>
+            </h1>
+            
+            <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
+              Odkryj emocje gry bez ryzyka! Graj w automaty, ruletkę i blackjacka 
+              w wersji demonstracyjnej. Zdobywaj punkty i osiągnięcia.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to={createPageUrl('Slots')}>
+                <Button className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black font-bold text-lg px-8 py-6 rounded-full shadow-lg shadow-yellow-500/25">
+                  <Gamepad2 className="mr-2 h-5 w-5" />
+                  Zagraj teraz
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              
+              <Link to={createPageUrl('Profile')}>
+                <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-800 text-lg px-8 py-6 rounded-full">
+                  <Gift className="mr-2 h-5 w-5" />
+                  Odbierz bonus
+                </Button>
+              </Link>
+            </div>
+
+            <div className="mt-8 flex items-center justify-center gap-6 text-sm text-gray-500">
+              <span className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-green-500" />
+                18+
+              </span>
+              <span>•</span>
+              <span>Tylko do zabawy</span>
+              <span>•</span>
+              <span>Bez prawdziwych pieniędzy</span>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Featured Games */}
+      <section className="py-16 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-bold text-white mb-2">Popularne gry</h2>
+              <p className="text-gray-400">Wypróbuj nasze najlepsze automaty</p>
+            </div>
+            <Link to={createPageUrl('Slots')}>
+              <Button variant="ghost" className="text-yellow-400 hover:text-yellow-300">
+                Zobacz wszystkie
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {games.map((game, index) => (
+              <motion.div
+                key={game.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <GameCard game={game} userIsVip={user?.is_vip} />
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="py-16 px-4 bg-gradient-to-b from-transparent to-gray-900/50">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-white mb-4">Dlaczego warto grać?</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">
+              Nasza platforma oferuje pełne doświadczenie kasyna bez żadnego ryzyka finansowego
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-gray-800/50 backdrop-blur rounded-xl p-6 border border-gray-700/50 hover:border-gray-600 transition-all"
+              >
+                <div className={`bg-gradient-to-br ${feature.color} w-12 h-12 rounded-xl flex items-center justify-center mb-4`}>
+                  <feature.icon className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">{feature.title}</h3>
+                <p className="text-gray-400 text-sm">{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-2xl p-8 md:p-12 border border-purple-500/30 text-center">
+            <Zap className="h-12 w-12 text-yellow-400 mx-auto mb-6" />
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              Gotowy na emocje?
+            </h2>
+            <p className="text-gray-300 mb-8 max-w-xl mx-auto">
+              Zarejestruj się i odbierz 10,000 punktów bonusowych na start!
+            </p>
+            <Link to={createPageUrl('Slots')}>
+              <Button className="bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black font-bold text-lg px-10 py-6 rounded-full">
+                Rozpocznij grę
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer disclaimer */}
+      <footer className="py-8 px-4 border-t border-gray-800">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Shield className="h-5 w-5 text-yellow-500" />
+            <span className="text-yellow-500 font-bold">18+</span>
+          </div>
+          <p className="text-gray-500 text-sm max-w-2xl mx-auto">
+            Ta strona oferuje wyłącznie gry w wersji demonstracyjnej. 
+            Nie oferujemy możliwości wygrania prawdziwych pieniędzy. 
+            Graj odpowiedzialnie.
+          </p>
+          <div className="mt-4 flex items-center justify-center gap-4 text-xs text-gray-600">
+            <Link to={createPageUrl('Terms')} className="hover:text-gray-400">Regulamin</Link>
+            <span>•</span>
+            <Link to={createPageUrl('Privacy')} className="hover:text-gray-400">Polityka prywatności</Link>
+            <span>•</span>
+            <Link to={createPageUrl('ResponsibleGaming')} className="hover:text-gray-400">Odpowiedzialna gra</Link>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}

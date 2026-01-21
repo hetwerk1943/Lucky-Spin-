@@ -1,0 +1,83 @@
+{
+  "name": "SlotGame",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nazwa automatu"
+    },
+    "description": {
+      "type": "string",
+      "description": "Opis gry"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "classic",
+        "modern",
+        "jackpot"
+      ],
+      "description": "Typ automatu"
+    },
+    "rtp": {
+      "type": "number",
+      "description": "Return to Player w procentach"
+    },
+    "volatility": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "description": "Zmienno\u015b\u0107 gry"
+    },
+    "min_bet": {
+      "type": "number",
+      "description": "Minimalna stawka"
+    },
+    "max_bet": {
+      "type": "number",
+      "description": "Maksymalna stawka"
+    },
+    "theme": {
+      "type": "string",
+      "description": "Motyw graficzny"
+    },
+    "symbols": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "emoji": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "multiplier": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Symbole w grze"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_vip_only": {
+      "type": "boolean",
+      "default": false
+    },
+    "image_url": {
+      "type": "string",
+      "description": "URL obrazka miniatury"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "rtp"
+  ]
+}

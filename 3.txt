@@ -1,0 +1,36 @@
+{
+  "name": "Achievement",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "string"
+    },
+    "requirement_type": {
+      "type": "string",
+      "enum": [
+        "total_spins",
+        "total_wins",
+        "big_win",
+        "games_played",
+        "level_reached"
+      ]
+    },
+    "requirement_value": {
+      "type": "number"
+    },
+    "reward_points": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "name",
+    "requirement_type",
+    "requirement_value"
+  ]
+}
